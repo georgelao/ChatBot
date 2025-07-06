@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groq Chatbot</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; } /* Simple font */
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-md p-6 w-full max-w-4xl flex flex-col h-[80vh]">
+        <h1 class="text-xl font-bold mb-4 text-center text-red-700">Groq Chatbot</h1>
+
+        <div id="chat-messages" class="flex-grow border border-gray-300 rounded-md p-3 mb-4 overflow-y-auto bg-gray-50 text-xs">
+            <!-- Chat messages will appear here -->
+        </div>
+
+        <div class="flex items-end">
+            <textarea id="user-input" class="flex-grow border border-gray-300 rounded-md p-2 mr-2 resize-none" rows="3" placeholder="Type your message..."></textarea>
+            <button id="send-button" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-md">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const chatMessages = document.getElementById('chat-messages');
+
+        function addMessage(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('mb-3');
+            messageDiv.innerHTML = `${sender}: ${message.replace(/\n/g, '<br>')}`;
+
+            // Make AI messages slightly smaller than user messages
+            if (sender === 'Groq') {
+                messageDiv.classList.add('text-[10px]');
+            } else if (sender === 'You') {
+                messageDiv.classList.add('text-gray-500');
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            addMessage('You', message);
+            userInput.value = '';
+            userInput.style.height = 'auto'; // Reset textarea height after sending
+
+            try {
+                const backendUrl = 'http://localhost:3000/groq_chat';
+                console.log('Sending message to:', backendUrl);
+
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json().catch(() => ({ message: "Could not parse error response" }));
+                    throw new Error(`HTTP error! status: ${response.status}, Details: ${JSON.stringify(errorBody)}`);
+                }
+                const data = await response.json();
+                const chatbotReply = data.reply || 'No reply received.';
+                addMessage('Groq', chatbotReply);
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessage('Groq', `Error: Could not get a reply. ${error.message}`);
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        window.onload = () => {
+            addMessage('Groq', 'Hello! I am Groq. How can I help you today?');
+            userInput.style.height = 'auto'; // Reset height on load
+            userInput.style.height = (userInput.scrollHeight) + 'px'; // Set initial height
+        };
+    </script>
+</body>
+</html>
